@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KeyGuard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --panel-2: #1f2430;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #2ea043;
+      --red: #d73a49;
+      --yellow: #d29922;
+      --border: #30363d;
+      --diff-add: rgba(46, 160, 67, 0.15);
+      --diff-del: rgba(215, 58, 73, 0.15);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px 56px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+    .tagline {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 0.95rem;
+    }
+    .health {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(46,160,67,0.12);
+    }
+    .dot.red { background: var(--red); box-shadow: 0 0 0 4px rgba(215,58,73,0.12); }
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    input {
+      flex: 1;
+      min-width: 260px;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 1rem;
+    }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #238636;
+      color: white;
+    }
+    button.secondary {
+      background: #21262d;
+      border: 1px solid var(--border);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .loading {
+      display: none;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      color: var(--muted);
+    }
+    .alert {
+      display: none;
+      background: rgba(215, 58, 73, 0.12);
+      border: 1px solid rgba(215,58,73,0.5);
+      color: #ffb4bf;
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+    .findings {
+      display: grid;
+      gap: 16px;
+    }
+    .finding {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .finding-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .badge.real { background: rgba(215,58,73,0.15); color: #ffb4bf; }
+    .badge.false { background: rgba(46,160,67,0.15); color: #a1f7ba; }
+    .badge.rule { background: rgba(210,153,34,0.15); color: #f7d78d; }
+    .badge.llm { background: rgba(56,139,253,0.15); color: #a5d5ff; }
+    .reason { margin: 10px 0; color: #dfe8f5; }
+    .fix-panel {
+      display: none;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .diff {
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      white-space: pre-wrap;
+      font-family: Consolas, monospace;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+    .diff .add { color: #a1f7ba; }
+    .diff .del { color: #ffb4bf; }
+    .checklist {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 0;
+      display: grid;
+      gap: 8px;
+    }
+    .checklist li { display: flex; align-items: center; gap: 8px; }
+    .checklist .pass { color: var(--green); }
+    .checklist .fail { color: var(--red); }
+    .actions { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .empty {
+      display: none;
+      color: var(--muted);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    @media (max-width: 700px) {
+      header { flex-direction: column; }
+      .controls { flex-direction: column; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>KeyGuard</h1>
+        <div class="tagline">Offline. Your code never leaves this machine.</div>
+      </div>
+      <div class="health">
+        <span id="healthDot" class="dot"></span>
+        <span id="healthText">Checking model...</span>
+      </div>
+    </header>
+
+    <div class="controls">
+      <input id="pathInput" type="text" value="demo_vulnerable" aria-label="Folder path" />
+      <button id="scanBtn">Scan</button>
+    </div>
+
+    <div id="loading" class="loading">Scanning... local model, this can take a minute</div>
+    <div id="errorBanner" class="alert"></div>
+
+    <div id="findings" class="findings"></div>
+    <div id="emptyState" class="empty">No findings found.</div>
+  </div>
+
+  <script>
+    const healthDot = document.getElementById('healthDot');
+    const healthText = document.getElementById('healthText');
+    const scanBtn = document.getElementById('scanBtn');
+    const pathInput = document.getElementById('pathInput');
+    const loading = document.getElementById('loading');
+    const errorBanner = document.getElementById('errorBanner');
+    const findingsEl = document.getElementById('findings');
+    const emptyState = document.getElementById('emptyState');
+
+    function setError(message) {
+      if (!message) {
+        errorBanner.style.display = 'none';
+        errorBanner.textContent = '';
+        return;
+      }
+      errorBanner.textContent = message;
+      errorBanner.style.display = 'block';
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        if (data.ollama && data.model_present) {
+          healthDot.classList.remove('red');
+          healthText.textContent = data.model;
+          return;
+        }
+        healthDot.classList.add('red');
+        healthText.textContent = data.model || 'model unavailable';
+      } catch (err) {
+        healthDot.classList.add('red');
+        healthText.textContent = 'Ollama unavailable';
+      }
+    }
+
+    function renderDiff(diffText) {
+      const lines = (diffText || '').split('\n');
+      return lines.map((line) => {
+        if (line.startsWith('+') && !line.startsWith('+++')) {
+          return '<span class="add">' + escapeHtml(line) + '</span>';
+        }
+        if (line.startsWith('-') && !line.startsWith('---')) {
+          return '<span class="del">' + escapeHtml(line) + '</span>';
+        }
+        return escapeHtml(line);
+      }).join('<br>');
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function badgeHtml(verdict, source) {
+      const vClass = verdict === 'REAL' ? 'real' : 'false';
+      const vText = verdict === 'REAL' ? 'REAL' : 'FALSE POSITIVE';
+      const sClass = source === 'rule' ? 'rule' : 'llm';
+      const sText = source === 'rule' ? 'rule-based' : 'LLM-judged';
+      return `
+        <span class="badge ${vClass}">${vText}</span>
+        <span class="badge ${sClass}">${sText}</span>
+      `;
+    }
+
+    function createFindingCard(item) {
+      const card = document.createElement('div');
+      card.className = 'finding';
+      const isReal = item.verdict === 'REAL';
+      card.innerHTML = `
+        <div class="finding-top">
+          <div class="meta">
+            <strong>${escapeHtml(item.file)}:${item.line}</strong>
+            <span>•</span>
+            <span>${escapeHtml(item.kind)}</span>
+            <span>•</span>
+            <span>${escapeHtml(item.masked_value)}</span>
+          </div>
+          <div>${badgeHtml(item.verdict, item.source)}</div>
+        </div>
+        <div class="reason">${escapeHtml(item.reason || 'No reason provided.')}</div>
+        ${isReal ? `
+          <div class="actions">
+            <button class="secondary fix-btn">Generate fix</button>
+          </div>
+          <div class="fix-panel">
+            <div class="diff"></div>
+            <ul class="checklist"></ul>
+            <div class="actions">
+              <button class="apply-btn">Apply fix</button>
+            </div>
+          </div>
+        ` : ''}
+      `;
+
+      if (isReal) {
+        const fixBtn = card.querySelector('.fix-btn');
+        const fixPanel = card.querySelector('.fix-panel');
+        const diffEl = card.querySelector('.diff');
+        const checklistEl = card.querySelector('.checklist');
+        const applyBtn = card.querySelector('.apply-btn');
+
+        fixBtn.addEventListener('click', async () => {
+          fixBtn.disabled = true;
+          try {
+            const res = await fetch('/api/fix', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ finding_id: item.id })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || 'Fix generation failed');
+            }
+            const checks = Array.isArray(data.checks) ? data.checks : [];
+            const listHtml = checks.map((check) => {
+              const cls = check.passed ? 'pass' : 'fail';
+              const mark = check.passed ? '✓' : '✗';
+              return `<li><span class="${cls}">${mark}</span> <span>${escapeHtml(check.name)}: ${escapeHtml(check.detail)}</span></li>`;
+            }).join('');
+            diffEl.innerHTML = renderDiff(data.diff || '');
+            checklistEl.innerHTML = listHtml;
+            const allPassed = checks.length > 0 && checks.every((check) => check.passed);
+            applyBtn.disabled = !allPassed;
+            fixPanel.style.display = 'block';
+          } catch (err) {
+            setError(err.message || 'Fix generation failed.');
+          } finally {
+            fixBtn.disabled = false;
+          }
+        });
+
+        applyBtn.addEventListener('click', async () => {
+          applyBtn.disabled = true;
+          try {
+            const res = await fetch('/api/apply', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ finding_id: item.id })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error || 'Apply failed');
+            }
+            const resultText = data.changes ? JSON.stringify(data.changes, null, 2) : 'Applied.';
+            const statusEl = document.createElement('div');
+            statusEl.className = 'reason';
+            statusEl.textContent = 'Applied successfully: ' + resultText;
+            card.appendChild(statusEl);
+          } catch (err) {
+            setError(err.message || 'Apply failed.');
+          }
+        });
+      }
+
+      return card;
+    }
+
+    async function scanFolder() {
+      const path = pathInput.value.trim();
+      if (!path) {
+        setError('Please enter a folder path.');
+        return;
+      }
+
+      loading.style.display = 'block';
+      setError('');
+      findingsEl.innerHTML = '';
+      emptyState.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Scan failed');
+        }
+
+        if (!Array.isArray(data.findings) || data.findings.length === 0) {
+          emptyState.style.display = 'block';
+          return;
+        }
+
+        const cards = data.findings.map(createFindingCard);
+        cards.forEach((card) => findingsEl.appendChild(card));
+      } catch (err) {
+        setError(err.message || 'Scan failed.');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    scanBtn.addEventListener('click', scanFolder);
+    checkHealth();
+  </script>
+</body>
+</html>

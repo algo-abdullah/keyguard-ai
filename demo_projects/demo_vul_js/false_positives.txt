@@ -1,0 +1,3 @@
+# false positives
+YOUR_API_KEY_HERE
+api_key = "sk-test-placeholder-1234"

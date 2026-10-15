@@ -1,0 +1,6 @@
+# False positives: fake placeholders, labels, and examples.
+YOUR_API_KEY_HERE
+password_label = "password_label"
+api_key = "sk-test-placeholder-1234"
+db_password = "change-me-before-deploy"
+# Example value: api_key = "example-demo-token"
